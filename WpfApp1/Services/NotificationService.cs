@@ -19,16 +19,14 @@ namespace WpfApp1.Services
         private readonly DispatcherTimer _pollTimer;
         private readonly HttpClient _client;
         private readonly List<NotificationWindow> _activeToasts = new();
-        private const string BaseUrl = "http://localhost:5000/api";
 
-        // How often to check for new notifications (seconds)
         private const int PollIntervalSeconds = 30;
 
         public NotificationService()
         {
             _client = new HttpClient
             {
-                BaseAddress = new Uri(BaseUrl),
+                BaseAddress = new Uri(ApiService.ServerUrl.TrimEnd('/') + "/"),
                 Timeout = TimeSpan.FromSeconds(10)
             };
 
@@ -61,7 +59,7 @@ namespace WpfApp1.Services
                 _client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", AppState.Token);
 
-                var response = await _client.GetAsync("/api/notifications/unread");
+                var response = await _client.GetAsync("notifications/unread");
                 if (!response.IsSuccessStatusCode) return;
 
                 var json = await response.Content.ReadAsStringAsync();

@@ -19,6 +19,8 @@ namespace WpfApp1
         private readonly NotificationService _notifService;
         private readonly EmailService       _emailService;
         private readonly DispatcherTimer    _badgeTimer;
+        private readonly HashSet<string>    _knownEmailUids = new();
+        private bool                        _emailFirstLoad = true;
 
         public DashboardWindow()
         {
@@ -108,10 +110,18 @@ namespace WpfApp1
 
             if (!result.IsSuccess)
             {
-                // Connection lost — go back to connect panel
                 ShowConnectPanel(result.Error);
                 return;
             }
+
+            // Detect new emails and show toast — skip toasts on first load
+            foreach (var mail in result.Emails)
+            {
+                bool isNew = _knownEmailUids.Add(mail.Uid);
+                if (isNew && !_emailFirstLoad)
+                    _notifService.PushLocal($"New Email from {mail.From}", mail.Subject, "email");
+            }
+            _emailFirstLoad = false;
 
             ApplyEmailList(result.Emails);
         }

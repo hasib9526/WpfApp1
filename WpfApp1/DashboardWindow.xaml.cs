@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using WpfApp1.Helpers;
 using WpfApp1.Models;
@@ -25,7 +27,8 @@ namespace WpfApp1
         public DashboardWindow()
         {
             InitializeComponent();
-            lblWelcome.Text = $"Hi, {AppState.UserName}!";
+            lblWelcome.Text  = $"Hi, {AppState.UserName}!";
+            txtMailEmail.Text = AppState.Email;
 
             _notifService = new NotificationService();
             _emailService = new EmailService();
@@ -201,6 +204,11 @@ namespace WpfApp1
             var pass = txtMailPassword.Password;
             if (string.IsNullOrEmpty(pass)) return;
 
+            // Use custom email if entered, otherwise keep existing AppState.Email
+            var customEmail = txtMailEmail.Text.Trim();
+            if (!string.IsNullOrEmpty(customEmail))
+                AppState.Email = customEmail;
+
             btnMailConnect.IsEnabled = false;
             lblMailError.Visibility  = Visibility.Collapsed;
             lblEmailStatus.Text      = "Inbox (connecting...)";
@@ -325,6 +333,27 @@ namespace WpfApp1
             this.Hide();
         }
 
+        private void BtnMenu_Click(object sender, RoutedEventArgs e)
+        {
+            menuPopup.IsOpen = !menuPopup.IsOpen;
+        }
+
+        private async void BtnLogoutMenu_Click(object sender, RoutedEventArgs e)
+        {
+            menuPopup.IsOpen = false;
+
+            try { await new ApiService().LogoutAsync(); } catch { }
+
+            _emailService.StopRealtimeSync();
+            _notifService.Stop();
+            _badgeTimer.Stop();
+            AppState.Clear();
+            SessionService.Clear();
+
+            this.Hide();
+            App.ShowLogin();
+        }
+
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             this.Hide();
@@ -332,7 +361,21 @@ namespace WpfApp1
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DragMove();
+            if (e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        private void ResizeGrip_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                e.Handled = true; // stop bubbling to Window_MouseLeftButtonDown
+                var hwnd = new WindowInteropHelper(this).Handle;
+                SendMessage(hwnd, 0x112, (IntPtr)0xF008, IntPtr.Zero);
+            }
         }
     }
 }

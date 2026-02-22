@@ -7,7 +7,8 @@
         Background="Transparent"
         Topmost="False"
         Width="350" Height="760"
-        ResizeMode="NoResize"
+        MinHeight="400" MaxHeight="900"
+        ResizeMode="CanResize"
         ShowInTaskbar="False"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
@@ -123,12 +124,48 @@
                                        Foreground="#AA7C3AED" FontSize="11"/>
                         </StackPanel>
                     </StackPanel>
-                    <Button Content="✕"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Width="26" Height="26" FontSize="11"
-                            Foreground="#60FFFFFF" Background="Transparent"
-                            BorderThickness="0" Cursor="Hand"
-                            Click="BtnClose_Click"/>
+
+                    <!-- Top-right buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+
+                        <!-- Menu button -->
+                        <Button x:Name="btnMenu" Content="⋮"
+                                Width="26" Height="26" FontSize="18"
+                                Foreground="#60FFFFFF" Background="Transparent"
+                                BorderThickness="0" Cursor="Hand"
+                                Margin="0,0,4,0"
+                                Click="BtnMenu_Click"/>
+
+                        <!-- Popup menu -->
+                        <Popup x:Name="menuPopup"
+                               PlacementTarget="{Binding ElementName=btnMenu}"
+                               Placement="Bottom"
+                               StaysOpen="False"
+                               AllowsTransparency="True">
+                            <Border CornerRadius="10" Padding="6"
+                                    Background="#EE0F0F20"
+                                    BorderBrush="#40FFFFFF" BorderThickness="1">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#7C3AED" BlurRadius="16" ShadowDepth="0" Opacity="0.4"/>
+                                </Border.Effect>
+                                <StackPanel>
+                                    <Button Content="⏻  Logout"
+                                            Background="Transparent" BorderThickness="0"
+                                            Foreground="#FFEF4444" FontSize="12"
+                                            Padding="12,8" Cursor="Hand"
+                                            HorizontalContentAlignment="Left"
+                                            Click="BtnLogoutMenu_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
+
+                        <!-- Close button -->
+                        <Button Content="✕"
+                                Width="26" Height="26" FontSize="11"
+                                Foreground="#60FFFFFF" Background="Transparent"
+                                BorderThickness="0" Cursor="Hand"
+                                Click="BtnClose_Click"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Notification Badge -->
@@ -393,8 +430,15 @@
                         Visibility="Collapsed">
                     <StackPanel>
                         <StackPanel x:Name="mailConnectPanel" Visibility="Visible">
-                            <TextBlock Text="Enter mail password to connect"
-                                       Foreground="#80FFFFFF" FontSize="11" Margin="0,0,0,8"/>
+                            <TextBlock Text="Mail Address"
+                                       Foreground="#80FFFFFF" FontSize="10" FontWeight="SemiBold"
+                                       Margin="2,0,0,5"/>
+                            <TextBox x:Name="txtMailEmail"
+                                     Style="{StaticResource WidgetTextBox}"
+                                     Margin="0,0,0,10"/>
+                            <TextBlock Text="Mail Password"
+                                       Foreground="#80FFFFFF" FontSize="10" FontWeight="SemiBold"
+                                       Margin="2,0,0,5"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -478,6 +522,15 @@
                             HorizontalAlignment="Right" Click="BtnLogout_Click"/>
                 </Grid>
             </Grid>
+        </Border>
+
+        <!-- Resize grip (bottom center) -->
+        <Border VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                Width="40" Height="6" CornerRadius="3"
+                Background="#40FFFFFF" Margin="0,0,0,4"
+                Cursor="SizeNS"
+                MouseLeftButtonDown="ResizeGrip_MouseDown">
+            <Border.ToolTip>Drag to resize</Border.ToolTip>
         </Border>
     </Grid>
 

@@ -121,19 +121,21 @@ namespace WpfApp1.Services
             }
             catch (ServiceRequestException ex)
             {
-                return new EmailResult
-                {
-                    IsSuccess = false,
-                    Error = $"Authentication failed: {ex.Message}"
-                };
+                var msg = ex.Message + (ex.InnerException?.Message ?? "");
+                var friendly = msg.Contains("401") || msg.Contains("Unauthorized") || msg.Contains("nthorized")
+                    ? "Incorrect email or password. Please try again."
+                    : $"Mail server error: {ex.Message}";
+                return new EmailResult { IsSuccess = false, Error = friendly };
             }
             catch (Exception ex)
             {
-                return new EmailResult
-                {
-                    IsSuccess = false,
-                    Error = ex.InnerException?.Message ?? ex.Message
-                };
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                var friendly = inner.Contains("401") || inner.Contains("Unauthorized")
+                    ? "Incorrect email or password. Please try again."
+                    : inner.Contains("connect") || inner.Contains("network") || inner.Contains("host")
+                        ? "Cannot connect to mail server. Check your network."
+                        : inner;
+                return new EmailResult { IsSuccess = false, Error = friendly };
             }
         }
 

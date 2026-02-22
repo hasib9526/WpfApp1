@@ -183,7 +183,7 @@ namespace WpfApp1
 
             if (!string.IsNullOrEmpty(error))
             {
-                lblMailError.Text       = error;
+                lblMailErrorText.Text   = error;
                 lblMailError.Visibility = Visibility.Visible;
             }
             else

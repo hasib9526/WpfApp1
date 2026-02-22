@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cd \"D:\\\\New folder\\\\WpfApp1\" && git commit -m \"$\\(cat <<'EOF'\nGlassmorphism UI redesign + email sync fixes\n\n- Redesigned all windows \\(MainWindow, Dashboard, EmailView, Notification\\) with glassmorphism and motion animation\n- Added fade-in/slide-up entrance animations on all windows\n- Replaced EWS streaming subscription \\(broken on .NET 9\\) with PullSubscription for real-time mail sync\n- Fixed 401 handling in EmailService\n- Removed logout behavior from Hide button \\(now just hides window\\)\n- Added .gitignore\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\nEOF\n\\)\" 2>&1)"
     ]
   }
 }

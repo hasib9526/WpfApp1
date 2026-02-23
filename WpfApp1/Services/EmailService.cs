@@ -22,11 +22,14 @@ namespace WpfApp1.Services
 
     public class EmailService
     {
-        private readonly string _ewsUrl;
+        // Primary URL (on-prem). May be updated at runtime to the URL that succeeded.
+        private string  _ewsUrl;
+        // Hybrid/O365 fallback — tried automatically if primary fails.
+        private readonly string? _ewsUrlAlt;
 
         public EmailService()
         {
-            _ewsUrl = ResolveEwsUrl();
+            (_ewsUrl, _ewsUrlAlt) = ResolveEwsUrls();
 
             // Trust all SSL certificates (for internal Exchange with self-signed cert)
             ServicePointManager.ServerCertificateValidationCallback =
@@ -35,7 +38,7 @@ namespace WpfApp1.Services
                 SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
         }
 
-        private static string ResolveEwsUrl()
+        private static (string primary, string? alt) ResolveEwsUrls()
         {
             try
             {
@@ -45,7 +48,7 @@ namespace WpfApp1.Services
                     var json = File.ReadAllText(configPath);
                     var cfg  = JsonConvert.DeserializeObject<dynamic>(json);
                     string? url = cfg?.EwsUrl;
-                    if (!string.IsNullOrWhiteSpace(url)) return url!;
+                    if (!string.IsNullOrWhiteSpace(url)) return (url!, null);
                 }
             }
             catch { }
@@ -53,11 +56,16 @@ namespace WpfApp1.Services
             var email = AppState.Email;
             if (!string.IsNullOrEmpty(email) && email.Contains('@'))
             {
-                var domain = email.Split('@')[1];
-                return $"https://mail.{domain}/EWS/Exchange.asmx";
+                var domain = email.Split('@')[1].ToLowerInvariant();
+                var onPrem = $"https://mail.{domain}/EWS/Exchange.asmx";
+                // Hybrid domains: try on-prem first, fall back to O365
+                if (domain == "bitopibd.com" || domain.EndsWith(".onmicrosoft.com"))
+                    return (onPrem, "https://outlook.office365.com/EWS/Exchange.asmx");
+                return (onPrem, null);
             }
 
-            return "https://mail.bitopibd.com/EWS/Exchange.asmx";
+            return ("https://mail.bitopibd.com/EWS/Exchange.asmx",
+                    "https://outlook.office365.com/EWS/Exchange.asmx");
         }
 
         private ExchangeService CreateService() =>
@@ -65,6 +73,14 @@ namespace WpfApp1.Services
             {
                 Credentials = new WebCredentials(AppState.Email, AppState.MailPassword),
                 Url         = new Uri(_ewsUrl),
+                Timeout     = 15000
+            };
+
+        private ExchangeService CreateServiceWith(string url) =>
+            new ExchangeService(ExchangeVersion.Exchange2013_SP1)
+            {
+                Credentials = new WebCredentials(AppState.Email, AppState.MailPassword),
+                Url         = new Uri(url),
                 Timeout     = 15000
             };
 
@@ -78,65 +94,78 @@ namespace WpfApp1.Services
             if (string.IsNullOrEmpty(AppState.Email) || string.IsNullOrEmpty(AppState.MailPassword))
                 return new EmailResult { IsSuccess = false, Error = "Email or password not set." };
 
-            try
+            // Build list of URLs to try: on-prem first, O365 fallback if hybrid
+            var urlsToTry = _ewsUrlAlt != null
+                ? new[] { _ewsUrl, _ewsUrlAlt }
+                : new[] { _ewsUrl };
+
+            Exception? lastErr = null;
+
+            foreach (var url in urlsToTry)
             {
-                var list = await SysTask.Run(() =>
+                try
                 {
-                    var service = CreateService();
-
-                    var filter = new SearchFilter.IsEqualTo(
-                        EmailMessageSchema.IsRead, false);
-
-                    var view = new ItemView(maxCount)
+                    var list = await SysTask.Run(() =>
                     {
-                        PropertySet = new PropertySet(
-                            BasePropertySet.IdOnly,
-                            EmailMessageSchema.Subject,
-                            EmailMessageSchema.From,
-                            EmailMessageSchema.DateTimeReceived)
-                    };
-                    view.OrderBy.Add(
-                        EmailMessageSchema.DateTimeReceived, SortDirection.Descending);
+                        var service = CreateServiceWith(url);
 
-                    var found = service.FindItems(WellKnownFolderName.Inbox, filter, view);
+                        var filter = new SearchFilter.IsEqualTo(
+                            EmailMessageSchema.IsRead, false);
 
-                    var result = new List<AppEmailMessage>();
-                    foreach (Item item in found)
-                    {
-                        if (item is EwsEmailMessage msg)
+                        var view = new ItemView(maxCount)
                         {
-                            result.Add(new AppEmailMessage
-                            {
-                                Uid     = msg.Id.UniqueId,
-                                From    = msg.From?.Name ?? msg.From?.Address ?? "Unknown",
-                                Subject = msg.Subject ?? "(no subject)",
-                                Date    = msg.DateTimeReceived.ToLocalTime()
-                            });
-                        }
-                    }
-                    return result;
-                });
+                            PropertySet = new PropertySet(
+                                BasePropertySet.IdOnly,
+                                EmailMessageSchema.Subject,
+                                EmailMessageSchema.From,
+                                EmailMessageSchema.DateTimeReceived)
+                        };
+                        view.OrderBy.Add(
+                            EmailMessageSchema.DateTimeReceived, SortDirection.Descending);
 
-                return new EmailResult { IsSuccess = true, Emails = list };
+                        var found = service.FindItems(WellKnownFolderName.Inbox, filter, view);
+
+                        var result = new List<AppEmailMessage>();
+                        foreach (Item item in found)
+                        {
+                            if (item is EwsEmailMessage msg)
+                            {
+                                result.Add(new AppEmailMessage
+                                {
+                                    Uid     = msg.Id.UniqueId,
+                                    From    = msg.From?.Name ?? msg.From?.Address ?? "Unknown",
+                                    Subject = msg.Subject ?? "(no subject)",
+                                    Date    = msg.DateTimeReceived.ToLocalTime()
+                                });
+                            }
+                        }
+                        return result;
+                    });
+
+                    _ewsUrl = url; // cache the URL that worked
+                    return new EmailResult { IsSuccess = true, Emails = list };
+                }
+                catch (ServiceRequestException ex)
+                {
+                    var msg = ex.Message + (ex.InnerException?.Message ?? "");
+                    if (msg.Contains("401") || msg.Contains("Unauthorized") || msg.Contains("nthorized"))
+                        return new EmailResult { IsSuccess = false, Error = "Incorrect email or password. Please try again." };
+                    lastErr = ex; // connection error — try next URL
+                }
+                catch (Exception ex)
+                {
+                    lastErr = ex; // try next URL
+                }
             }
-            catch (ServiceRequestException ex)
-            {
-                var msg = ex.Message + (ex.InnerException?.Message ?? "");
-                var friendly = msg.Contains("401") || msg.Contains("Unauthorized") || msg.Contains("nthorized")
-                    ? "Incorrect email or password. Please try again."
-                    : $"Mail server error: {ex.Message}";
-                return new EmailResult { IsSuccess = false, Error = friendly };
-            }
-            catch (Exception ex)
-            {
-                var inner = ex.InnerException?.Message ?? ex.Message;
-                var friendly = inner.Contains("401") || inner.Contains("Unauthorized")
-                    ? "Incorrect email or password. Please try again."
-                    : inner.Contains("connect") || inner.Contains("network") || inner.Contains("host")
-                        ? "Cannot connect to mail server. Check your network."
-                        : inner;
-                return new EmailResult { IsSuccess = false, Error = friendly };
-            }
+
+            // All URLs failed
+            var inner = lastErr?.InnerException?.Message ?? lastErr?.Message ?? "Unknown error";
+            var friendly = inner.Contains("401") || inner.Contains("Unauthorized")
+                ? "Incorrect email or password. Please try again."
+                : inner.Contains("connect") || inner.Contains("network") || inner.Contains("host")
+                    ? "Cannot connect to mail server. Check your network."
+                    : inner;
+            return new EmailResult { IsSuccess = false, Error = friendly };
         }
 
         /// <summary>Fetches full email body (plain text) by item UID.</summary>

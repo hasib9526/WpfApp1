@@ -97,8 +97,8 @@ namespace WpfApp1
                 var serverDir = Path.GetDirectoryName(serverExe)!;
                 Process.Start(new ProcessStartInfo(serverExe)
                 {
-                    UseShellExecute  = true,
-                    WindowStyle      = ProcessWindowStyle.Minimized,
+                    UseShellExecute  = false,
+                    CreateNoWindow   = true,
                     WorkingDirectory = serverDir
                 });
             }

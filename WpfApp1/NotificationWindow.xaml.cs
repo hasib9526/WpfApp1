@@ -33,9 +33,7 @@ namespace WpfApp1
                     break;
             }
 
-            // Position at top-right corner of screen
-            Left = SystemParameters.WorkArea.Width - Width - 10;
-            Top = 10;
+            // Position is set by StackBelow — no initial position needed here
 
             // Auto-close after 5 seconds
             _autoCloseTimer = new DispatcherTimer
@@ -51,7 +49,8 @@ namespace WpfApp1
         /// </summary>
         public void StackBelow(int existingCount)
         {
-            Top = 10 + (existingCount * 110);
+            Left = (SystemParameters.WorkArea.Width  - Width)  / 2;
+            Top  = (SystemParameters.WorkArea.Height - Height) / 2 + (existingCount * 100);
         }
 
         private void FadeOutAndClose()

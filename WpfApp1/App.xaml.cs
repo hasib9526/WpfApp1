@@ -57,25 +57,42 @@ namespace WpfApp1
             if (saved == null) return false;
 
             var (data, password, mailPassword) = saved.Value;
-            try
+
+            // Retry up to 6 times — on PC startup network may not be ready immediately
+            for (int attempt = 0; attempt < 6; attempt++)
             {
-                var api    = new ApiService();
-                var result = await api.LoginAsync(data.UserName, password);
-                if (result == null) return false;
+                try
+                {
+                    if (attempt > 0) await Task.Delay(3000); // wait 3s before retry
 
-                AppState.UserCode     = result.UserCode     ?? data.UserCode;
-                AppState.UserName     = result.UserName     ?? data.UserName;
-                AppState.EmployeeName = result.EmployeeName ?? data.EmployeeName;
-                AppState.Department   = result.Department   ?? data.Department;
-                AppState.Designation  = result.Designation  ?? data.Designation;
-                AppState.Email        = result.Email        ?? data.Email;
-                AppState.MailPassword = mailPassword; // restored — dashboard auto-connects
+                    var api    = new ApiService();
+                    var result = await api.LoginAsync(data.UserName, password);
 
-                StartBackgroundServices();
-                ShowDashboard();
-                return true;
+                    if (result == null) return false; // wrong credentials — no point retrying
+
+                    AppState.UserCode     = result.UserCode     ?? data.UserCode;
+                    AppState.UserName     = result.UserName     ?? data.UserName;
+                    AppState.EmployeeName = result.EmployeeName ?? data.EmployeeName;
+                    AppState.Department   = result.Department   ?? data.Department;
+                    AppState.Designation  = result.Designation  ?? data.Designation;
+                    AppState.Email        = result.Email        ?? data.Email;
+                    AppState.MailPassword = mailPassword;
+
+                    StartBackgroundServices();
+                    ShowDashboard();
+                    return true;
+                }
+                catch (HttpRequestException)
+                {
+                    // Network not ready yet — retry after delay
+                }
+                catch
+                {
+                    return false;
+                }
             }
-            catch { return false; }
+
+            return false;
         }
 
         private static async Task TryStartLocalServer()

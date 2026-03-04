@@ -16,7 +16,7 @@ namespace WpfApp1.Services
         private readonly HttpClient _client;
 
 
-        // Reads server URL from config.json next to the exe, falls back to PPC API server
+        // Reads server URL from config.json next to the exe (required)
         public static string ServerUrl
         {
             get
@@ -33,7 +33,7 @@ namespace WpfApp1.Services
                     }
                 }
                 catch { }
-                return "http://172.16.13.6:13806/api";
+                return string.Empty; // config.json missing or invalid
             }
         }
 

@@ -18,27 +18,48 @@ namespace WpfApp1
 {
     public partial class DashboardWindow : Window
     {
-        private readonly NotificationService _notifService;
-        private readonly EmailService       _emailService;
-        private readonly ApprovalService    _approvalService;
-        private readonly DispatcherTimer    _badgeTimer;
-        private readonly HashSet<string>    _knownEmailUids = new();
-        private bool                        _emailFirstLoad = true;
+        private readonly EmailService    _emailService;
+        private readonly DispatcherTimer _badgeTimer;
+        private readonly HashSet<string> _knownEmailUids = new();
+        private bool                     _emailFirstLoad = true;
 
         public DashboardWindow()
         {
             InitializeComponent();
-            lblWelcome.Text  = $"Hi, {AppState.UserName}!";
+            lblWelcome.Text   = $"Hi, {AppState.UserName}!";
             txtMailEmail.Text = AppState.Email;
 
-            _notifService    = new NotificationService();
-            _emailService    = new EmailService();
-            _approvalService = new ApprovalService(_notifService);
+            _emailService = new EmailService();
 
-            _approvalService.DataUpdated += data => Dispatcher.Invoke(() =>
+            // Subscribe to approval updates from the app-level service
+            if (App.ApprovalSvc != null)
+            {
+                App.ApprovalSvc.DataUpdated += OnApprovalDataUpdated;
+                _ = App.ApprovalSvc.RefreshAsync(); // get latest data immediately
+            }
+
+            LoadDashboard();
+
+            Loaded += async (_, _) =>
+            {
+                DesktopHelper.PinToDesktop(this);
+
+                if (!string.IsNullOrEmpty(AppState.MailPassword))
+                    await AutoConnectEmailAsync();
+            };
+
+            // Update notification badge every 5 seconds
+            _badgeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _badgeTimer.Tick += (_, _) => UpdateBadge();
+            _badgeTimer.Start();
+        }
+
+        private void OnApprovalDataUpdated(ApprovalSummaryResponse data)
+        {
+            Dispatcher.Invoke(() =>
             {
                 lstApprovals.ItemsSource = null;
-                lstApprovals.ItemsSource = data.Approvals;
+                lstApprovals.ItemsSource = data.Approvals.Where(a => a.Request > 0).ToList();
 
                 if (data.TotalPending > 0)
                 {
@@ -50,36 +71,7 @@ namespace WpfApp1
                     badgeApproval.Visibility = Visibility.Collapsed;
                 }
             });
-
-            LoadDashboard();
-
-            // Pin to desktop layer
-            Loaded += async (_, _) =>
-            {
-                DesktopHelper.PinToDesktop(this);
-
-                // Start notification polling (checks API every 30s)
-                _notifService.Start();
-
-                // Start approval polling (checks BIMOB every 5 min)
-                _approvalService.Start();
-
-                // Auto-connect email if mail password was restored from session
-                if (!string.IsNullOrEmpty(AppState.MailPassword))
-                    await AutoConnectEmailAsync();
-            };
-
-            // Update notification badge every 5 seconds
-            _badgeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-            _badgeTimer.Tick += (_, _) => UpdateBadge();
-            _badgeTimer.Start();
-
         }
-
-        /// <summary>
-        /// Access notification service from outside (e.g., App.xaml.cs)
-        /// </summary>
-        public NotificationService NotificationService => _notifService;
 
         private void LoadDashboard()
         {
@@ -131,7 +123,7 @@ namespace WpfApp1
             {
                 bool isNew = _knownEmailUids.Add(mail.Uid);
                 if (isNew && !_emailFirstLoad)
-                    _notifService.PushLocal($"New Email from {mail.From}", mail.Subject, "email");
+                    App.NotifService?.PushLocal($"New Email from {mail.From}", mail.Subject, "email");
             }
             _emailFirstLoad = false;
 
@@ -311,9 +303,10 @@ namespace WpfApp1
             try { await new ApiService().LogoutAsync(); } catch { }
 
             _emailService.StopRealtimeSync();
-            _notifService.Stop();
-            _approvalService.Stop();
             _badgeTimer.Stop();
+            if (App.ApprovalSvc != null)
+                App.ApprovalSvc.DataUpdated -= OnApprovalDataUpdated;
+            App.StopBackgroundServices();
             AppState.Clear();
             SessionService.Clear();
 

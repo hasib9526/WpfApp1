@@ -1,21 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Threading;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
 using WpfApp1.Models;
 
 namespace WpfApp1.Services
 {
     /// <summary>
-    /// Polls /api/approval every 5 minutes. Fires DataUpdated when fresh data
-    /// arrives and shows a toast when new pending approvals are detected.
+    /// Polls /api/approval every 1 minute on a background thread.
+    /// Fires DataUpdated (on UI thread) when fresh data arrives and
+    /// shows a toast when new pending approvals are detected.
     /// </summary>
     public class ApprovalService
     {
-        private readonly DispatcherTimer     _timer;
-        private readonly ApiService          _api;
-        private readonly NotificationService _notifService;
+        private readonly ApiService           _api;
+        private readonly NotificationService  _notifService;
         private readonly Dictionary<int, int> _prevCounts = new();
         private bool _isFirstLoad = true;
+        private CancellationTokenSource? _cts;
 
         /// <summary>Raised on the UI thread whenever fresh approval data arrives.</summary>
         public event Action<ApprovalSummaryResponse>? DataUpdated;
@@ -24,25 +27,41 @@ namespace WpfApp1.Services
         {
             _api          = new ApiService();
             _notifService = notifService;
-
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
-            _timer.Tick += async (_, _) => await FetchAsync();
         }
 
         public void Start()
         {
-            _timer.Start();
-            _ = FetchAsync();   // immediate first fetch
+            _cts = new CancellationTokenSource();
+            _ = RunLoopAsync(_cts.Token);
         }
 
-        public void Stop() => _timer.Stop();
+        public void Stop()
+        {
+            _cts?.Cancel();
+            _cts = null;
+        }
 
-        private async System.Threading.Tasks.Task FetchAsync()
+        public Task RefreshAsync() => FetchAsync();
+
+        private async Task RunLoopAsync(CancellationToken ct)
+        {
+            await FetchAsync();                          // immediate first fetch
+            while (!ct.IsCancellationRequested)
+            {
+                try   { await Task.Delay(TimeSpan.FromMinutes(1), ct); }
+                catch (TaskCanceledException) { break; }
+
+                if (!ct.IsCancellationRequested)
+                    await FetchAsync();
+            }
+        }
+
+        private async Task FetchAsync()
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine(
-                    $"[Approval] Fetching... UserCode={WpfApp1.Models.AppState.UserCode}");
+                    $"[Approval] Fetching... UserCode={AppState.UserCode}");
 
                 var data = await _api.GetApprovalsAsync();
 
@@ -58,9 +77,7 @@ namespace WpfApp1.Services
 
                     foreach (var item in data.Approvals)
                     {
-                        var prev = _prevCounts.TryGetValue(item.Approval, out var p)
-                                   ? p : item.Request;
-
+                        var prev = _prevCounts.TryGetValue(item.Approval, out var p) ? p : 0;
                         if (item.Request > prev)
                         {
                             newNames.Add(item.ApprovalName);
@@ -75,12 +92,13 @@ namespace WpfApp1.Services
                             "approval");
                 }
 
-                // Update baseline counts
                 foreach (var item in data.Approvals)
                     _prevCounts[item.Approval] = item.Request;
 
                 _isFirstLoad = false;
-                DataUpdated?.Invoke(data);
+
+                // Fire event on UI thread
+                Application.Current?.Dispatcher.Invoke(() => DataUpdated?.Invoke(data));
             }
             catch (Exception ex)
             {

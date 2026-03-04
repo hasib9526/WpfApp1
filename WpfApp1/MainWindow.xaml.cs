@@ -75,6 +75,7 @@ namespace WpfApp1
                     // Persist session so next launch skips login
                     SessionService.SaveLogin(password, result);
 
+                    App.StartBackgroundServices();
                     App.ShowDashboard();
                     this.Close();
                 }

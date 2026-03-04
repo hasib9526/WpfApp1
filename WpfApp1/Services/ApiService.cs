@@ -98,11 +98,10 @@ namespace WpfApp1.Services
             var items = JsonConvert.DeserializeObject<List<ApprovalItem>>(body);
             if (items == null) return null;
 
-            var pending = items.Where(a => a.Request > 0).ToList();
             return new ApprovalSummaryResponse
             {
-                TotalPending = pending.Sum(a => a.Request),
-                Approvals    = pending
+                TotalPending = items.Sum(a => a.Request),
+                Approvals    = items   // all items returned; UI filters Request > 0 for display
             };
         }
 

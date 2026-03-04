@@ -106,11 +106,10 @@
                     <RowDefinition Height="Auto"/>  <!-- 1  Notification Badge  -->
                     <RowDefinition Height="Auto"/>  <!-- 2  Email Badge         -->
                     <RowDefinition Height="Auto"/>  <!-- 3  Approval Badge      -->
-                    <RowDefinition Height="Auto"/>  <!-- 4  Stats Cards         -->
-                    <RowDefinition Height="*"/>     <!-- 5  Approval List       -->
-                    <RowDefinition Height="Auto"/>  <!-- 6  Notifications Panel -->
-                    <RowDefinition Height="Auto"/>  <!-- 7  Email Panel         -->
-                    <RowDefinition Height="Auto"/>  <!-- 8  Footer              -->
+                    <RowDefinition Height="*"/>     <!-- 4  Approval List       -->
+                    <RowDefinition Height="Auto"/>  <!-- 5  Notifications Panel -->
+                    <RowDefinition Height="Auto"/>  <!-- 6  Email Panel         -->
+                    <RowDefinition Height="Auto"/>  <!-- 7  Footer              -->
                 </Grid.RowDefinitions>
 
                 <!-- Header -->
@@ -271,100 +270,9 @@
                     </Grid>
                 </Border>
 
-                <!-- Stats Cards -->
-                <Grid Grid.Row="4" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Total -->
-                    <Border Grid.Column="0" CornerRadius="12" Padding="10,12">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#25A855F7" Offset="0"/>
-                                <GradientStop Color="#107C3AED" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#50A855F7" Offset="0"/>
-                                <GradientStop Color="#20A855F7" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
-                        <Border.Effect>
-                            <DropShadowEffect Color="#7C3AED" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                        </Border.Effect>
-                        <StackPanel HorizontalAlignment="Center">
-                            <TextBlock x:Name="lblTotal" Text="0"
-                                       Foreground="#FFA855F7" FontSize="24" FontWeight="Bold"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Total" Foreground="#80FFFFFF" FontSize="10"
-                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Done -->
-                    <Border Grid.Column="2" CornerRadius="12" Padding="10,12">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#2022C55E" Offset="0"/>
-                                <GradientStop Color="#1016A34A" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#5022C55E" Offset="0"/>
-                                <GradientStop Color="#2022C55E" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
-                        <Border.Effect>
-                            <DropShadowEffect Color="#22C55E" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/>
-                        </Border.Effect>
-                        <StackPanel HorizontalAlignment="Center">
-                            <TextBlock x:Name="lblDone" Text="0"
-                                       Foreground="#FF22C55E" FontSize="24" FontWeight="Bold"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Done" Foreground="#80FFFFFF" FontSize="10"
-                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Pending -->
-                    <Border Grid.Column="4" CornerRadius="12" Padding="10,12">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#22FBBF24" Offset="0"/>
-                                <GradientStop Color="#10D97706" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#50FBBF24" Offset="0"/>
-                                <GradientStop Color="#20FBBF24" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
-                        <Border.Effect>
-                            <DropShadowEffect Color="#FBBF24" BlurRadius="10" ShadowDepth="0" Opacity="0.25"/>
-                        </Border.Effect>
-                        <StackPanel HorizontalAlignment="Center">
-                            <TextBlock x:Name="lblPending" Text="0"
-                                       Foreground="#FFFBBF24" FontSize="24" FontWeight="Bold"
-                                       HorizontalAlignment="Center"/>
-                            <TextBlock Text="Pending" Foreground="#80FFFFFF" FontSize="10"
-                                       HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
 
                 <!-- Approval List -->
-                <Border Grid.Row="5" CornerRadius="12" Padding="5" Margin="0,0,0,6"
+                <Border Grid.Row="4" CornerRadius="12" Padding="5" Margin="0,0,0,6"
                         Background="#12FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl x:Name="lstApprovals">
@@ -404,7 +312,7 @@
                 </Border>
 
                 <!-- Notifications Panel -->
-                <Border x:Name="notifPanel" Grid.Row="6"
+                <Border x:Name="notifPanel" Grid.Row="5"
                         CornerRadius="12" Padding="8" Margin="0,0,0,6"
                         Background="#12FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
                         Visibility="Collapsed" MaxHeight="130">
@@ -435,7 +343,7 @@
                 </Border>
 
                 <!-- Email Panel -->
-                <Border x:Name="emailPanel" Grid.Row="7"
+                <Border x:Name="emailPanel" Grid.Row="6"
                         CornerRadius="12" Padding="10" Margin="0,0,0,6"
                         Background="#12FFFFFF" BorderBrush="#20FFFFFF" BorderThickness="1"
                         Visibility="Collapsed">
@@ -535,7 +443,7 @@
                 </Border>
 
                 <!-- Footer -->
-                <Grid Grid.Row="8" Margin="0,4,0,0">
+                <Grid Grid.Row="7" Margin="0,4,0,0">
                     <TextBlock x:Name="lblLastLogin" Text=""
                                Foreground="#50FFFFFF" FontSize="10"
                                VerticalAlignment="Center"/>

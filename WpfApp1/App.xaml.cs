@@ -14,8 +14,26 @@ namespace WpfApp1
 {
     public partial class App : Application
     {
-        public static TaskbarIcon?      TrayIcon  { get; private set; }
-        public static DashboardWindow?  Dashboard { get; set; }
+        public static TaskbarIcon?       TrayIcon    { get; private set; }
+        public static DashboardWindow?   Dashboard   { get; set; }
+        public static NotificationService? NotifService { get; private set; }
+        public static ApprovalService?     ApprovalSvc  { get; private set; }
+
+        public static void StartBackgroundServices()
+        {
+            NotifService = new NotificationService();
+            ApprovalSvc  = new ApprovalService(NotifService);
+            NotifService.Start();
+            ApprovalSvc.Start();
+        }
+
+        public static void StopBackgroundServices()
+        {
+            NotifService?.Stop();
+            ApprovalSvc?.Stop();
+            NotifService = null;
+            ApprovalSvc  = null;
+        }
 
         protected override async void OnStartup(StartupEventArgs e)
         {
@@ -53,6 +71,7 @@ namespace WpfApp1
                 AppState.Email        = result.Email        ?? data.Email;
                 AppState.MailPassword = mailPassword; // restored — dashboard auto-connects
 
+                StartBackgroundServices();
                 ShowDashboard();
                 return true;
             }
@@ -161,7 +180,7 @@ namespace WpfApp1
 
             var testNotif = new System.Windows.Controls.MenuItem { Header = "Test Notification" };
             testNotif.Click += (_, _) =>
-                Dashboard?.NotificationService.PushLocal("Test", "Notification on top of everything!", "info");
+                NotifService?.PushLocal("Test", "Notification on top of everything!", "info");
 
             var exitItem = new System.Windows.Controls.MenuItem { Header = "Exit" };
             exitItem.Click += (_, _) => { TrayIcon?.Dispose(); Current.Shutdown(); };

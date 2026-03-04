@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -12,6 +14,7 @@ namespace WpfApp1.Services
     public class ApiService
     {
         private readonly HttpClient _client;
+
 
         // Reads server URL from config.json next to the exe, falls back to PPC API server
         public static string ServerUrl
@@ -80,6 +83,27 @@ namespace WpfApp1.Services
                 return null;
 
             return loginResponse;
+        }
+
+        public async Task<ApprovalSummaryResponse?> GetApprovalsAsync()
+        {
+            if (string.IsNullOrEmpty(AppState.UserCode)) return null;
+
+            var resp = await _client.GetAsync(
+                $"Approval/GetApprovals?UserID={AppState.UserCode}&QryOption=1");
+
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var body  = await resp.Content.ReadAsStringAsync();
+            var items = JsonConvert.DeserializeObject<List<ApprovalItem>>(body);
+            if (items == null) return null;
+
+            var pending = items.Where(a => a.Request > 0).ToList();
+            return new ApprovalSummaryResponse
+            {
+                TotalPending = pending.Sum(a => a.Request),
+                Approvals    = pending
+            };
         }
 
         public async Task LogoutAsync()

@@ -45,6 +45,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
+// HttpClient for BIMOB API
+builder.Services.AddHttpClient("BimobApi", client =>
+{
+    client.BaseAddress = new Uri("http://apps.bitopibd.com:8090/bimobapiv2");
+    client.Timeout     = TimeSpan.FromSeconds(30);
+});
+
 // SQLite — stores notifications locally on the server machine (no SQL Server table needed)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=widget_notifications.db"));

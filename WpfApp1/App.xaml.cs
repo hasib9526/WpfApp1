@@ -15,7 +15,7 @@ namespace WpfApp1
     public partial class App : Application
     {
         public static TaskbarIcon?      TrayIcon  { get; private set; }
-        public static DashboardWindow?  Dashboard { get; private set; }
+        public static DashboardWindow?  Dashboard { get; set; }
 
         protected override async void OnStartup(StartupEventArgs e)
         {

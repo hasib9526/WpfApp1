@@ -70,4 +70,17 @@ namespace WpfApp1.Models
         public string   Subject { get; set; } = string.Empty;
         public DateTime Date    { get; set; }
     }
+
+    public class ApprovalItem
+    {
+        public int    Approval     { get; set; }
+        public string ApprovalName { get; set; } = string.Empty;
+        public int    Request      { get; set; }
+    }
+
+    public class ApprovalSummaryResponse
+    {
+        public int              TotalPending { get; set; }
+        public List<ApprovalItem> Approvals  { get; set; } = new();
+    }
 }

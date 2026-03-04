@@ -20,6 +20,7 @@ namespace WpfApp1
     {
         private readonly NotificationService _notifService;
         private readonly EmailService       _emailService;
+        private readonly ApprovalService    _approvalService;
         private readonly DispatcherTimer    _badgeTimer;
         private readonly HashSet<string>    _knownEmailUids = new();
         private bool                        _emailFirstLoad = true;
@@ -30,8 +31,25 @@ namespace WpfApp1
             lblWelcome.Text  = $"Hi, {AppState.UserName}!";
             txtMailEmail.Text = AppState.Email;
 
-            _notifService = new NotificationService();
-            _emailService = new EmailService();
+            _notifService    = new NotificationService();
+            _emailService    = new EmailService();
+            _approvalService = new ApprovalService(_notifService);
+
+            _approvalService.DataUpdated += data => Dispatcher.Invoke(() =>
+            {
+                lstApprovals.ItemsSource = null;
+                lstApprovals.ItemsSource = data.Approvals;
+
+                if (data.TotalPending > 0)
+                {
+                    lblApprovalCount.Text    = data.TotalPending.ToString();
+                    badgeApproval.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    badgeApproval.Visibility = Visibility.Collapsed;
+                }
+            });
 
             LoadDashboard();
 
@@ -42,6 +60,9 @@ namespace WpfApp1
 
                 // Start notification polling (checks API every 30s)
                 _notifService.Start();
+
+                // Start approval polling (checks BIMOB every 5 min)
+                _approvalService.Start();
 
                 // Auto-connect email if mail password was restored from session
                 if (!string.IsNullOrEmpty(AppState.MailPassword))
@@ -62,19 +83,7 @@ namespace WpfApp1
 
         private void LoadDashboard()
         {
-            var todos = AppState.Todos.OrderByDescending(t => t.CreatedAt).ToList();
-            lstTodos.ItemsSource = null;
-            lstTodos.ItemsSource = todos;
-
-            var total = todos.Count;
-            var done = todos.Count(t => t.IsCompleted);
-
-            lblTotal.Text = total.ToString();
-            lblDone.Text = done.ToString();
-            lblPending.Text = (total - done).ToString();
-
             lblLastLogin.Text = $"{DateTime.Now:MMM dd, hh:mm tt}";
-
             UpdateBadge();
             UpdateNotificationList();
         }
@@ -285,49 +294,6 @@ namespace WpfApp1
             }
         }
 
-        private void BtnAddTodo_Click(object sender, RoutedEventArgs e)
-        {
-            var title = txtNewTodo.Text.Trim();
-            if (string.IsNullOrEmpty(title)) return;
-
-            AppState.Todos.Add(new TodoItem
-            {
-                Id = AppState.GetNextId(),
-                Title = title,
-                IsCompleted = false,
-                CreatedAt = DateTime.Now
-            });
-
-            txtNewTodo.Text = "";
-            LoadDashboard();
-        }
-
-        private void TxtNewTodo_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-                BtnAddTodo_Click(sender, e);
-        }
-
-        private void TodoCheckbox_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is CheckBox cb && cb.DataContext is TodoItem todo)
-            {
-                var item = AppState.Todos.FirstOrDefault(t => t.Id == todo.Id);
-                if (item != null)
-                    item.IsCompleted = !item.IsCompleted;
-                LoadDashboard();
-            }
-        }
-
-        private void BtnDeleteTodo_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.DataContext is TodoItem todo)
-            {
-                AppState.Todos.RemoveAll(t => t.Id == todo.Id);
-                LoadDashboard();
-            }
-        }
-
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
             this.Hide();
@@ -346,9 +312,14 @@ namespace WpfApp1
 
             _emailService.StopRealtimeSync();
             _notifService.Stop();
+            _approvalService.Stop();
             _badgeTimer.Stop();
             AppState.Clear();
             SessionService.Clear();
+
+            // Null out the static reference so next login creates a fresh window
+            // (avoids showing stale data from the previous user)
+            App.Dashboard = null;
 
             this.Hide();
             App.ShowLogin();

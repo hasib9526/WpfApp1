@@ -267,6 +267,18 @@ namespace WpfApp1
             Process.Start(new ProcessStartInfo(tempFile) { UseShellExecute = true });
         }
 
+        private void ApprovalBadge_Click(object sender, MouseButtonEventArgs e)
+        {
+            approvalPanel.Visibility = approvalPanel.Visibility == Visibility.Collapsed
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void ApprovalCollapse_Click(object sender, RoutedEventArgs e)
+        {
+            approvalPanel.Visibility = Visibility.Collapsed;
+        }
+
         private void NotifBadge_Click(object sender, MouseButtonEventArgs e)
         {
             // Toggle notification panel
